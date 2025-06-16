@@ -199,25 +199,6 @@ Resources:
 #security group
 #--------------------------------------------------------------#
 
-  #ec2 security group (alb 80 22 port)
-  EC2SecurityGroup:
-    Type: "AWS::EC2::SecurityGroup"
-    Properties:
-      GroupName: !Sub "${PJPrefix}-ec2-sg"
-      GroupDescription: "ec2 security group"
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: 80
-        ToPort: 80
-        CidrIp: "0.0.0.0/0"
-      - IpProtocol: tcp
-        FromPort: 22
-        ToPort: 22
-        CidrIp: "0.0.0.0/0"
-      Tags:
-      - Key: Name
-        Value: !Sub "${PJPrefix}-ec2-sg"
 
   # alb security grou (80 443 ec2 と接続)
   ALBSecurityGroup:
@@ -230,15 +211,35 @@ Resources:
       - IpProtocol: tcp
         FromPort: 80
         ToPort: 80
-        SourceSecurityGroupId: !Ref EC2SecurityGroup
+        CidrIp: "0.0.0.0/0"
       - IpProtocol: tcp
         FromPort: 443
         ToPort: 443
-        SourceSecurityGroupId: !Ref EC2SecurityGroup
+        CidrIp: "0.0.0.0/0"
       Tags:
       - Key: Name
         Value: !Sub "${PJPrefix}-alb-sg"
 
+  #ec2 security group (alb 80 22 port)
+  EC2SecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName: !Sub "${PJPrefix}-ec2-sg"
+      GroupDescription: "ec2 security group"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        SourceSecurityGroupId: !Ref ALBSecurityGroup
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: "0.0.0.0/0"
+      Tags:
+      - Key: Name
+        Value: !Sub "${PJPrefix}-ec2-sg"
+  
   
 #--------------------------------------------------------------#
 #EC2
