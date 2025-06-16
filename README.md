@@ -1,5 +1,9 @@
-# alb * ec2 でのyaml ファイルです
+# cloudformation sets for 構築
 
+
+## 準備中です
+- shell を叩いて実行する方法
+- 他のリソースを作成する
 
 ### 前提
 - aws configure の設定が完了していること
@@ -25,7 +29,11 @@ pjprefix を任意の値に変更してください
 
 CLI コマンドでデプロイしてください
 ```bash
- aws cloudformation create-stack --stack-name test-stack --template-body file://cloudfront-alb.yml
+# change the permission to be able to execute the shell
+chmod 755 cloudformation-create.sh
+
+# shell execute 
+./cloudformation-create.sh
 
 ```
 
