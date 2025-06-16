@@ -10,7 +10,7 @@
 
 clone してローカルにもってきてください
 ```bash
-git clone -b https://github.com/kentaindeed/aws-cf-env.git
+git clone -b main https://github.com/kentaindeed/aws-cf-env.git
 
 ```
 
