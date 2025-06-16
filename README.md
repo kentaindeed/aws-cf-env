@@ -29,6 +29,9 @@ pjprefix を任意の値に変更してください
 
 CLI コマンドでデプロイしてください
 ```bash
+# remove the words "example" from the file
+mv cloudfront-alb.yml.example cloudfront-alb.yml 
+
 # change the permission to be able to execute the shell
 chmod 755 cloudformation-create.sh
 
