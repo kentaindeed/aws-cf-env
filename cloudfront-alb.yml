@@ -44,6 +44,11 @@ Parameters:
   EC2InstanceVolumeSize:
     Type: String
     Default: "30"
+
+# cidr IP list
+  # MyIPAddress:
+  #   Type: String
+  #   Default: "0000000/32"
   
 # # alb parameter setting
 #   ALBTargetPort:
@@ -245,6 +250,7 @@ Resources:
 #EC2
 #--------------------------------------------------------------#
   
+  # parameter store に保管される
   EC2KeyPair:
     Type: AWS::EC2::KeyPair
     Properties:
