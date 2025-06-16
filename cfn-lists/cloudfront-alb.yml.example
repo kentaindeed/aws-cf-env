@@ -1,0 +1,340 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+#-------------------------------------------------------------------------#
+#    このyaml CLoudfront cloudfront * ALB EC2 * 1 + S3 を構築します
+#    一つめ
+#-------------------------------------------------------------------------#
+
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: "test"
+  
+  AvailabilityA:
+    Type: String
+    Default: ap-northeast-1a
+  AvailabilityC:
+    Type: String
+    Default: ap-northeast-1c
+
+# VPC parameter setting
+  VPCCIDR:
+    Type: String
+    Default: "10.0.0.0/16"
+  PublicSubnetACIDR:
+    Type: String
+    Default: "10.0.10.0/24"
+  PublicSubnetCCIDR:
+    Type: String
+    Default: "10.0.20.0/24"
+  PrivateSubnetACIDR:
+    Type: String
+    Default: "10.0.30.0/24"
+  PrivateSubnetCCIDR:
+    Type: String
+    Default: "10.0.40.0/24"
+
+# ec2 parameter setting
+  EC2InstanceType:
+    Type: String
+    Default: "t2.small"
+  EC2InstanceVolumeType:
+    Type: String
+    Default: "gp3"
+  EC2InstanceVolumeSize:
+    Type: String
+    Default: "30"
+
+# cidr IP list TODO: replace your ip with the below
+  # MyIPAddress:
+  #   Type: String
+  #   Default: "x0000000/32"
+  
+
+
+#--------------------------------------------------------------#
+#VPC
+#--------------------------------------------------------------#
+
+Resources:
+
+  VPC:
+    Type: "AWS::EC2::VPC"
+    Properties: 
+      CidrBlock: !Ref VPCCIDR
+      EnableDnsSupport: "true"
+      EnableDnsHostnames: "true"
+      InstanceTenancy: default
+      Tags: 
+        - Key: Name
+          Value: !Sub "${PJPrefix}-vpc"
+
+
+#--------------------------------------------------------------#
+#subnet
+#--------------------------------------------------------------#
+
+
+# Public SubnetA Create
+  PublicSubnetA: 
+      Type: "AWS::EC2::Subnet"
+      Properties: 
+        AvailabilityZone: !Ref AvailabilityA
+        CidrBlock: !Ref PublicSubnetACIDR
+        VpcId: !Ref VPC 
+        Tags: 
+          - Key: Name
+            Value: !Sub "${PJPrefix}-public-subnet-a"
+  
+  # Public SubnetC Create
+  PublicSubnetC: 
+      Type: "AWS::EC2::Subnet"
+      Properties: 
+        AvailabilityZone: !Ref AvailabilityC
+        CidrBlock: !Ref PublicSubnetCCIDR
+        VpcId: !Ref VPC 
+        Tags: 
+          - Key: Name
+            Value: !Sub "${PJPrefix}-public-subnet-c"
+
+  #Private SubnetA Create
+  PrivateSubnetA:
+      Type: "AWS::EC2::Subnet"
+      Properties:
+        AvailabilityZone: !Ref AvailabilityA
+        CidrBlock: !Ref PrivateSubnetACIDR
+        VpcId: !Ref VPC 
+        Tags: 
+          - Key: Name
+            Value: !Sub "${PJPrefix}-private-subnet-a"
+
+  #Private SubnetA Create
+  PrivateSubnetC:
+      Type: "AWS::EC2::Subnet"
+      Properties:
+        AvailabilityZone: !Ref AvailabilityC
+        CidrBlock: !Ref PrivateSubnetCCIDR
+        VpcId: !Ref VPC 
+        Tags: 
+          - Key: Name
+            Value: !Sub "${PJPrefix}-private-subnet-a"
+
+
+#--------------------------------------------------------------#
+#Route table
+#--------------------------------------------------------------#
+
+# Public RouteTableA Create
+  PublicRouteTableA: 
+      Type: "AWS::EC2::RouteTable"
+      Properties: 
+        VpcId: !Ref VPC 
+        Tags: 
+          - Key: Name
+            Value: !Sub "${PJPrefix}-public-route-a"
+
+
+## Private RouteTableB Create
+  PrivateRouteTableA:
+    Type: "AWS::EC2::RouteTable"
+    Properties: 
+        VpcId: !Ref VPC 
+        Tags: 
+          - Key: Name
+            Value: !Sub "${PJPrefix}-private-route-a"
+
+
+
+
+#--------------------------------------------------------------#
+#Route table Association
+#--------------------------------------------------------------#
+
+# PublicRouteTable Associate SubnetA
+  PublicSubnetARouteTableAssociation: 
+      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Properties: 
+        SubnetId: !Ref PublicSubnetA 
+        RouteTableId: !Ref PublicRouteTableA
+  
+# PublicRouteTable Associate SubnetC
+  PublicSubnetCRouteTableAssociation: 
+      Type: "AWS::EC2::SubnetRouteTableAssociation"
+      Properties: 
+        SubnetId: !Ref PublicSubnetC 
+        RouteTableId: !Ref PublicRouteTableA
+
+
+#--------------------------------------------------------------#
+#igw(create + attach)
+#--------------------------------------------------------------#
+
+  InternetGateway: 
+      Type: "AWS::EC2::InternetGateway"
+      Properties: 
+        Tags: 
+          - Key: Name
+            Value: !Sub "${PJPrefix}-igw"
+  
+# IGW Attach
+  InternetGatewayAttachment: 
+      Type: "AWS::EC2::VPCGatewayAttachment"
+      Properties: 
+        InternetGatewayId: !Ref InternetGateway
+        VpcId: !Ref VPC 
+
+# IGW route table
+  PublicRouteTableIGWAssociation:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref PublicRouteTableA
+
+
+#--------------------------------------------------------------#
+#security group
+#--------------------------------------------------------------#
+
+
+  # alb security grou (80 443 ec2 と接続)
+  ALBSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName: !Sub "${PJPrefix}-alb-sg"
+      GroupDescription: "alb security group"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: "0.0.0.0/0"
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: "0.0.0.0/0"
+      Tags:
+      - Key: Name
+        Value: !Sub "${PJPrefix}-alb-sg"
+
+  #ec2 security group (alb 80 22 port)
+  EC2SecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName: !Sub "${PJPrefix}-ec2-sg"
+      GroupDescription: "ec2 security group"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        SourceSecurityGroupId: !Ref ALBSecurityGroup
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: "0.0.0.0/0"
+      Tags:
+      - Key: Name
+        Value: !Sub "${PJPrefix}-ec2-sg"
+  
+  
+#--------------------------------------------------------------#
+#EC2
+#--------------------------------------------------------------#
+  
+  # parameter store に保管される
+  EC2KeyPair:
+    Type: AWS::EC2::KeyPair
+    Properties:
+        KeyName: cloudformation-key
+
+  #public ec2 instance(ami: alma linux 9.5)
+  EC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AvailabilityA
+      ImageId: ami-0ed99df77a82560e6
+      InstanceType: !Ref EC2InstanceType
+      KeyName: !Ref EC2KeyPair
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: '0'
+          GroupSet:
+            - !Ref EC2SecurityGroup
+          SubnetId: !Ref PublicSubnetA
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-ec2"
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: !Ref EC2InstanceVolumeType
+            VolumeSize: !Ref EC2InstanceVolumeSize
+            DeleteOnTermination: false
+            Encrypted: true
+
+
+
+#-------------------------------------------------------------------------#
+#      target group
+#-------------------------------------------------------------------------#
+
+  TargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+        Name: !Sub ${PJPrefix}-tg
+        Tags:
+          - Key: Name
+            Value: !Sub ${PJPrefix}-tg
+        Port: 80
+        Protocol: HTTP
+        Matcher:
+            HttpCode: '200'
+        VpcId: !Ref VPC
+        TargetType: instance
+        Targets:
+          - Id: !Ref EC2
+
+#-------------------------------------------------------------------------#
+#      alb
+#-------------------------------------------------------------------------#
+
+  ALB:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+        Name: !Sub ${PJPrefix}-alb
+        Type: application
+        IpAddressType: ipv4
+        Scheme: internet-facing
+        SecurityGroups:
+          - !Ref ALBSecurityGroup
+        Subnets:
+          - !Ref PublicSubnetA
+          - !Ref PublicSubnetC
+        Tags:
+          - Key: Name
+            Value: !Sub ${PJPrefix}-alb
+
+
+#-------------------------------------------------------------------------#
+#      listen
+#-------------------------------------------------------------------------#
+
+  ListnerHTTP:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+        DefaultActions:
+          - Type: forward
+            TargetGroupArn: !Ref TargetGroup
+        LoadBalancerArn: !Ref ALB
+        Port: 80
+        Protocol: HTTP
+
+
+#-------------------------------------------------------------------------#
+#      cloudfront　alb origin
+#-------------------------------------------------------------------------#
+
+
+  
+
