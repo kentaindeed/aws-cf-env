@@ -1,0 +1,24 @@
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- script: |
+    mv cfn-lists/cloudfront-alb.yml.example cfn-lists/cloudfront-alb.yml
+    cp -ip cfn-lists/cloudfront-alb.yml ./
+  displayName: 'Rename CloudFormation template file'
+
+- task: CloudFormationCreateOrUpdateStack@1
+  inputs:
+    awsCredentials: 'aws-devploy-service-connect'
+    regionName: 'ap-northeast-1'
+    stackName: 'azure-devops-stack'
+    templateSource: 'file'
+    templateFile: 'cloudfront-alb.yml'
+
+- script: |
+    echo Add other tasks to build, test, and deploy your project.
+    echo See https://aka.ms/yaml
+  displayName: 'Run a multi-line script'
